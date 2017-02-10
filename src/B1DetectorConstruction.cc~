@@ -1,0 +1,102 @@
+#include "B1DetectorConstruction.hh"
+#include "G4RunManager.hh"
+#include "G4NistManager.hh"
+#include "G4Box.hh"
+#include "G4Cons.hh"
+#include "G4Orb.hh"
+#include "G4Sphere.hh"
+#include "G4Trd.hh"
+#include "G4LogicalVolume.hh"
+#include "G4PVPlacement.hh"
+#include "G4SystemOfUnits.hh"
+
+B1DetectorConstruction::B1DetectorConstruction()
+: G4VUserDetectorConstruction(),
+  fScoringVolume(0)
+{ }
+
+B1DetectorConstruction::~B1DetectorConstruction()
+{ }
+
+G4VPhysicalVolume* B1DetectorConstruction::Construct()
+{  
+  // Get nist material manager
+  G4NistManager* nist = G4NistManager::Instance();
+
+  // Making Bakelite, CO2, Ar and Gas Mix.
+
+  G4double z, a, density, fractionmass;
+  G4int ncomponents, natoms;
+  G4String name, symbol;
+
+  G4Element* elC = new G4Element(name = "Carbon",symbol="C",z = 6., a=   12.0107*g/mole);
+  G4Element* elH = new G4Element(name = "Hydrogen",symbol="H",z = 1., a= 1*g/mole);
+  G4Element* elO = new G4Element(name = "Oxygen",symbol="O",z = 8., a= 16*g/mole);
+
+  density=1.4*g/cm3;
+  G4Material* Bakelite =  new G4Material(name = "Bakelite", density, ncomponents=3);
+
+  density=1.977*kg/m3;
+
+  G4Material* CO2 =  new G4Material(name = "CarbonDioxide", density, ncomponents=2);
+
+  CO2->AddElement(elC,natoms=1);
+  CO2->AddElement(elO,natoms=2);
+
+  Bakelite->AddElement(elC,natoms=1);
+  Bakelite->AddElement(elH,natoms=4);
+  Bakelite->AddElement(elO,natoms=2);
+
+  G4Material* Ar = nist->FindOrBuildMaterial("G4_Ar");
+
+  density = 183*mg/cm3;
+  G4Material* Gas = new G4Material(name="ArCO2Mix",density,ncomponents=2);
+  Gas->AddMaterial(CO2, fractionmass=30*perCent);
+  Gas->AddMaterial(Ar, fractionmass=70*perCent);
+
+ //Making the geometry now!
+
+   //making world volume
+  G4double world_x = 1.0*m;
+  G4double world_y = 1.0*m;
+  G4double world_z = 1.0*m;
+  G4Box* worldBox =  new G4Box("World", world_x,world_y,world_z);
+
+  G4Material* Air = nist->FindOrBuildMaterial("G4_AIR");
+  //making logical volume
+  G4LogicalVolume* worldLog = new G4LogicalVolume(worldBox, Air,"World");
+  //placing it using physical volume
+  G4double pos_x = 0.0*m;
+  G4double pos_y = 0.0*m;
+  G4double pos_z = 0.0*m;
+  G4VPhysicalVolume* World = new G4PVPlacement(0,G4ThreeVector(pos_x, pos_y,pos_z),worldLog,"RPC World",0,false,0);
+
+
+// Making,logical and placing of three volumes...
+  G4Box* top_bake =  new G4Box("Top_bake", 7.5*cm,7.5*cm,1*mm);
+  G4LogicalVolume* toplog = new G4LogicalVolume(top_bake, Bakelite,"Top_bake");
+  G4VPhysicalVolume* topbake = new G4PVPlacement(0,G4ThreeVector(0*mm,0*mm,3*mm),toplog,"Top Electrode",worldLog,false,0);
+  
+  G4Box* cavity =  new G4Box("cavity",7.5*cm,7.5*cm,1*mm);
+  G4LogicalVolume* cavitylog = new G4LogicalVolume(cavity, Gas,"cavity");
+  G4VPhysicalVolume* Cavity = new G4PVPlacement(0,G4ThreeVector(0*mm,0*mm,0*mm),cavitylog,"Gap",worldLog,false,0);
+  
+  G4Box* bot_bake =  new G4Box("Bot Bake", 7.5*cm,7.5*cm,1*mm);
+  G4LogicalVolume* botlog = new G4LogicalVolume(bot_bake , Bakelite,"Bot Bake");
+  G4VPhysicalVolume* botbake = new G4PVPlacement(0,G4ThreeVector(0*mm,0*mm,-3*mm),botlog,"Bot Electrode",worldLog,false,0);
+
+  fScoringVolume = cavitylog;
+
+  return World;
+  
+
+   
+
+
+
+}
+
+
+	
+
+
